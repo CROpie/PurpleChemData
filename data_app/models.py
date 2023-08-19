@@ -52,15 +52,6 @@ class Chemical(Base):
     orders = relationship("Order", back_populates="chemical")
 
 
-class Status(Base):
-    __tablename__ = "status"
-
-    id = Column(Integer, primary_key=True, index=True)
-    value = Column(Enum("submitted", "ordered", "received"))
-
-    orders = relationship("Order", back_populates="status")
-
-
 class Supplier(Base):
     __tablename__ = "suppliers"
 
@@ -89,8 +80,7 @@ class Order(Base):
     )
     location = relationship("Location", back_populates="orders")
 
-    status_id = Column(Integer, ForeignKey("status.id"), default=1)
-    status = relationship("Status", back_populates="orders")
+    status = Column(Enum("submitted", "ordered", "received"), default="submitted")
 
     amount = Column(Integer)
     amountUnit = Column(Enum("mg", "mL", "g", "L"))
