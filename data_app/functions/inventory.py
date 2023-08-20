@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
 
 from .. import models
+from ..schemas.inventory import PatchOrder
 
 
 ### LOAD FUNCTION ###
@@ -56,3 +57,30 @@ def check_duplicate_location(db: Session, locationName: str, user_id: int):
             status_code=status.HTTP_418_IM_A_TEAPOT,
             detail=f"{location.locationName} is already in your list of locations.",
         )
+
+
+### PATCH AMOUNT AND/OR LOCATION ###
+def patch_amount_andor_location(db: Session, order: PatchOrder):
+    patch_order = db.query(models.Order).filter(models.Order.id == order.id).first()
+
+    if not patch_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    patch_order.amount = order.amount
+    patch_order.location_id = order.location_id
+    patch_order.isConsumed = order.isConsumed
+    db.commit()
+    print("after commit: ", patch_order)
+    return patch_order
+
+
+### PATCH STATUS TO RECEIVED ###
+def force_status_received(db: Session, order_id: int):
+    print("order_id: ", order_id)
+    patch_order = db.query(models.Order).filter(models.Order.id == order_id).first()
+
+    if not patch_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    patch_order.status = "received"
+    db.commit()

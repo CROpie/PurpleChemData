@@ -4,28 +4,45 @@ from sqlalchemy.orm import Session, selectinload
 from .. import models
 
 
-def get_orders_list_query(db: Session, query: str):
-    print("Inside function, query: ", query)
-    ordersList = (
-        db.query(models.Order, models.Chemical, models.User, models.Supplier)
-        .join(models.Chemical, models.Order.chemical_id == models.Chemical.id)
-        .join(models.User, models.Order.user_id == models.User.id)
-        .join(models.Supplier, models.Order.supplier_id == models.Supplier.id)
-        .filter(
-            or_(
-                models.Chemical.chemicalName.ilike(f"%{query}%"),
-                models.User.full_name.ilike(f"%{query}%"),
-                models.Chemical.CAS.ilike(f"%{query}%"),
+def get_orders_list_by_query(db: Session, query_string: str, query_type: str):
+    if query_type == "string":
+        ordersList = (
+            db.query(models.Order, models.Chemical, models.User, models.Supplier)
+            .join(models.Chemical, models.Order.chemical_id == models.Chemical.id)
+            .join(models.User, models.Order.user_id == models.User.id)
+            .join(models.Supplier, models.Order.supplier_id == models.Supplier.id)
+            .filter(
+                or_(
+                    models.Chemical.chemicalName.ilike(f"%{query_string}%"),
+                    models.User.full_name.ilike(f"%{query_string}%"),
+                    models.Chemical.CAS.ilike(f"%{query_string}%"),
+                )
             )
+            .options(
+                selectinload(models.Order.user),
+                selectinload(models.Order.chemical),
+                selectinload(models.Order.supplier),
+                selectinload(models.Order.location),
+            )
+            .all()
         )
-        .options(
-            selectinload(models.Order.user),
-            selectinload(models.Order.chemical),
-            selectinload(models.Order.supplier),
-            selectinload(models.Order.location),
+
+    if query_type == "structure":
+        ordersList = (
+            db.query(models.Order, models.Chemical, models.User, models.Supplier)
+            .join(models.Chemical, models.Order.chemical_id == models.Chemical.id)
+            .join(models.User, models.Order.user_id == models.User.id)
+            .join(models.Supplier, models.Order.supplier_id == models.Supplier.id)
+            .filter(models.Chemical.inchi == query_string)
+            .options(
+                selectinload(models.Order.user),
+                selectinload(models.Order.chemical),
+                selectinload(models.Order.supplier),
+                selectinload(models.Order.location),
+            )
+            .all()
         )
-        .all()
-    )
+
     ## ordersList is a list of tuples
     # [ ( <models.Order object>, <models.Chemical object> ), ... ]
     # for order, chemical in ordersList:
@@ -52,5 +69,3 @@ def get_orders_list_query(db: Session, query: str):
 
         formatted_orders_list.append(formatted_order)
     return formatted_orders_list
-
-    # supplierName: str

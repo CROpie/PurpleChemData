@@ -45,24 +45,6 @@ class AmountUnitEnum(str, PyEnum):
     L = "L"
 
 
-# class QueryOrder(BaseModel):
-#     id: int
-#     user_id: int
-#     user: User
-#     chemical_id: int
-#     chemical: Chemical
-#     supplier_id: int
-#     supplier: Supplier
-#     location_id: Optional[int] = None
-#     location: Optional[Location] = None
-#     status: StatusEnum
-#     amount: int
-#     amountUnit: AmountUnitEnum
-#     isConsumed: bool
-#     orderDate: datetime
-#     supplierPN: Optional[str] = None
-
-
 class QueryOrder(BaseModel):
     id: int
     amount: int

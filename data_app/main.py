@@ -1,6 +1,5 @@
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, Query, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-
 
 from sqlalchemy.orm import Session
 from typing import Annotated
@@ -19,6 +18,8 @@ from .schemas.input import (
 )
 from .schemas.load import LoadSupplier, LoadLocationsAndOrdersLists
 from .schemas.query import QueryOrder
+from .schemas.inventory import PatchOrder, OutPatchOrder
+from .schemas.orderchemical import Chemical
 
 from .functions.auth import validate_current_user
 from .functions.orderchemical import (
@@ -31,6 +32,8 @@ from .functions.inventory import (
     check_duplicate_location,
     get_locations_list,
     get_orders_list,
+    force_status_received,
+    patch_amount_andor_location,
 )
 from .functions.admin import (
     add_new_user,
@@ -38,7 +41,7 @@ from .functions.admin import (
     add_new_supplier,
     check_duplicate_supplier,
 )
-from .functions.querydatabase import get_orders_list_query
+from .functions.querydatabase import get_orders_list_by_query
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -78,6 +81,22 @@ async def get_orderchemical_load(
 ):
     suppliersList = db.query(models.Supplier).all()
     data = suppliersList
+    return data
+
+
+### CHECK IF NON-COMMONCHEM CAS IS IN DATABASE ###
+@app.get("/getchemicalbycas/", response_model=Chemical)
+async def get_query_chemical(
+    current_user: Annotated[models.User, Depends(validate_current_user)],
+    db: Session = Depends(get_db),
+    CAS: str = Query(None),
+):
+    chemical = get_chemical_by_CAS(db=db, CAS=CAS)
+    if not chemical:
+        raise HTTPException(
+            status_code=status.HTTP_418_IM_A_TEAPOT, detail="Not in the database."
+        )
+    data = chemical
     return data
 
 
@@ -141,7 +160,27 @@ def add_location(
     return data
 
 
-### MODIFY AMOUNT OR LOCATION ###
+### FORCE STATUS UPDATE ###
+@app.patch("/forcereceived/")
+def patch_status_to_received(
+    current_user: Annotated[models.User, Depends(validate_current_user)],
+    db: Session = Depends(get_db),
+    query: str = Query(None),
+):
+    force_status_received(db=db, order_id=query)
+
+
+### MODIFY AMOUNT AND/OR LOCATION ###
+@app.patch("/patchamountlocation/", response_model=OutPatchOrder)
+def modify_amount_andor_location(
+    orderData: PatchOrder,
+    current_user: Annotated[models.User, Depends(validate_current_user)],
+    db: Session = Depends(get_db),
+):
+    patched_order = patch_amount_andor_location(db=db, order=orderData)
+    data = patched_order
+    return data
+
 
 ## <- QUERY DATABASE -> ##
 
@@ -151,9 +190,12 @@ def add_location(
 async def get_orders_by_query(
     current_user: Annotated[models.User, Depends(validate_current_user)],
     db: Session = Depends(get_db),
-    query: str = Query(None),
+    queryType: str = Query(None),
+    queryString: str = Query(None),
 ):
-    orders_list = get_orders_list_query(db=db, query=query)
+    orders_list = get_orders_list_by_query(
+        db=db, query_string=queryString, query_type=queryType
+    )
     data = orders_list
     return data
 
