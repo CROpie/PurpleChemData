@@ -27,6 +27,12 @@ class Chemical(BaseModel):
     inchi: Optional[str] = None
 
 
+class User(BaseModel):
+    id: int
+    username: str
+    full_name: str
+
+
 class Supplier(BaseModel):
     id: int
     supplierName: str
@@ -52,8 +58,8 @@ class AmountUnitEnum(str, PyEnum):
 
 class LoadOrder(BaseModel):
     id: int
-    # user_id: int
-    # user: User
+    user_id: int
+    user: User
     chemical_id: int
     chemical: Chemical
     supplier_id: int
@@ -78,3 +84,18 @@ class LoadLocationsAndOrdersLists(BaseModel):
 class LoadSupplier(BaseModel):
     id: int
     supplierName: str
+
+
+# ADMIN #
+
+
+class LoadUser(User):
+    pass
+
+
+class LoadSupplier(Supplier):
+    pass
+
+
+class LoadChemical(Chemical):
+    pass

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
 
 from .. import models
-from ..schemas.inventory import PatchOrder
+from ..schemas.inventory import PatchAmountLocation
 
 
 ### LOAD FUNCTION ###
@@ -18,17 +18,31 @@ def get_locations_list(db: Session, user_id: int):
 
 
 def get_orders_list(db: Session, user_id: int):
-    ordersList = (
-        db.query(models.Order)
-        .filter(models.Order.user_id == user_id)
-        .options(
-            selectinload(models.Order.user),
-            selectinload(models.Order.chemical),
-            selectinload(models.Order.supplier),
-            selectinload(models.Order.location),
+    print("user_id: ", user_id)
+
+    if user_id == "all":
+        ordersList = (
+            db.query(models.Order)
+            .options(
+                selectinload(models.Order.user),
+                selectinload(models.Order.chemical),
+                selectinload(models.Order.supplier),
+                selectinload(models.Order.location),
+            )
+            .all()
         )
-        .all()
-    )
+    else:
+        ordersList = (
+            db.query(models.Order)
+            .filter(models.Order.user_id == user_id)
+            .options(
+                selectinload(models.Order.user),
+                selectinload(models.Order.chemical),
+                selectinload(models.Order.supplier),
+                selectinload(models.Order.location),
+            )
+            .all()
+        )
     return ordersList
 
 
@@ -59,8 +73,23 @@ def check_duplicate_location(db: Session, locationName: str, user_id: int):
         )
 
 
+### DELETE LOCATION ###
+def delete_location_details(db: Session, user_id: int, location_id: int):
+    to_delete_location = (
+        db.query(models.Location)
+        .filter(models.Location.user_id == user_id, models.Location.id == location_id)
+        .first()
+    )
+
+    if not to_delete_location:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    db.delete(to_delete_location)
+    db.commit()
+
+
 ### PATCH AMOUNT AND/OR LOCATION ###
-def patch_amount_andor_location(db: Session, order: PatchOrder):
+def patch_amount_andor_location(db: Session, order: PatchAmountLocation):
     patch_order = db.query(models.Order).filter(models.Order.id == order.id).first()
 
     if not patch_order:

@@ -4,6 +4,16 @@ from .. import models
 from ..schemas.input import NewChemical, NewOrder
 
 
+def get_chemical_by_ChemName(db: Session, chemName: str):
+    chemical = (
+        db.query(models.Chemical)
+        .filter(models.Chemical.chemicalName == chemName)
+        .first()
+    )
+    if chemical:
+        return chemical
+
+
 ### GET CHEMICAL ID OR ADD NEW CHEMICAL ###
 def get_chemical_by_CAS(db: Session, CAS: str):
     chemical = db.query(models.Chemical).filter(models.Chemical.CAS == CAS).first()

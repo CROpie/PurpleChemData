@@ -16,14 +16,30 @@ from .schemas.input import (
     NewSupplier,
     NewOrder,
 )
-from .schemas.load import LoadSupplier, LoadLocationsAndOrdersLists
+from .schemas.load import (
+    LoadSupplier,
+    LoadLocationsAndOrdersLists,
+    LoadOrder,
+    LoadUser,
+    LoadLocation,
+    LoadChemical,
+)
+from .schemas.admin import (
+    PatchStatus,
+    PatchUser,
+    PatchChemical,
+    PatchSupplier,
+    PatchOrder,
+    DeleteAny,
+)
 from .schemas.query import QueryOrder
-from .schemas.inventory import PatchOrder, OutPatchOrder
+from .schemas.inventory import PatchAmountLocation, OutPatchOrder
 from .schemas.orderchemical import Chemical
 
-from .functions.auth import validate_current_user
+from .functions.auth import validate_current_user, validate_current_admin
 from .functions.orderchemical import (
     get_chemical_by_CAS,
+    get_chemical_by_ChemName,
     add_new_chemical,
     add_new_order,
 )
@@ -34,12 +50,22 @@ from .functions.inventory import (
     get_orders_list,
     force_status_received,
     patch_amount_andor_location,
+    delete_location_details,
 )
 from .functions.admin import (
     add_new_user,
     check_duplicate_user,
     add_new_supplier,
     check_duplicate_supplier,
+    patch_order_status,
+    patch_user_details,
+    patch_chemical_details,
+    patch_supplier_details,
+    patch_order_details,
+    delete_user_details,
+    delete_supplier_details,
+    delete_chemical_details,
+    delete_order_details,
 )
 from .functions.querydatabase import get_orders_list_by_query
 
@@ -92,6 +118,22 @@ async def get_query_chemical(
     CAS: str = Query(None),
 ):
     chemical = get_chemical_by_CAS(db=db, CAS=CAS)
+    if not chemical:
+        raise HTTPException(
+            status_code=status.HTTP_418_IM_A_TEAPOT, detail="Not in the database."
+        )
+    data = chemical
+    return data
+
+
+### CHECK IF NON-COMMONCHEM CHEMICALNAME IS IN DATABASE ###
+@app.get("/getchemicalbychemname/", response_model=Chemical)
+async def get_query_chemical_name(
+    current_user: Annotated[models.User, Depends(validate_current_user)],
+    db: Session = Depends(get_db),
+    chemName: str = Query(None),
+):
+    chemical = get_chemical_by_ChemName(db=db, chemName=chemName)
     if not chemical:
         raise HTTPException(
             status_code=status.HTTP_418_IM_A_TEAPOT, detail="Not in the database."
@@ -160,6 +202,16 @@ def add_location(
     return data
 
 
+### DELETE LOCATION ###
+@app.delete("/deletelocation/")
+def delete_location(
+    location: DeleteAny,
+    current_user: Annotated[models.User, Depends(validate_current_user)],
+    db: Session = Depends(get_db),
+):
+    delete_location_details(db=db, user_id=current_user.id, location_id=location.id)
+
+
 ### FORCE STATUS UPDATE ###
 @app.patch("/forcereceived/")
 def patch_status_to_received(
@@ -173,7 +225,7 @@ def patch_status_to_received(
 ### MODIFY AMOUNT AND/OR LOCATION ###
 @app.patch("/patchamountlocation/", response_model=OutPatchOrder)
 def modify_amount_andor_location(
-    orderData: PatchOrder,
+    orderData: PatchAmountLocation,
     current_user: Annotated[models.User, Depends(validate_current_user)],
     db: Session = Depends(get_db),
 ):
@@ -216,7 +268,7 @@ def add_first_user(
 @app.post("/adduser/")
 def add_user(
     new_user: NewUser,
-    current_user: Annotated[models.User, Depends(validate_current_user)],
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
     db: Session = Depends(get_db),
 ):
     check_duplicate_user(db, username=new_user.username)
@@ -228,9 +280,149 @@ def add_user(
 @app.post("/addsupplier/")
 def add_supplier(
     supplierData: NewSupplier,
-    current_user: Annotated[models.User, Depends(validate_current_user)],
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
     db: Session = Depends(get_db),
 ):
     check_duplicate_supplier(db=db, supplierName=supplierData.supplierName)
 
     add_new_supplier(db=db, supplier=supplierData)
+
+
+### MODIFY ORDER LOAD ###
+@app.get("/modifyorderload/", response_model=list[LoadOrder])
+def get_order_load(
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    ordersList = get_orders_list(db=db, user_id="all")
+
+    data = ordersList
+    return data
+
+
+### MODIFY STATUS ###
+@app.patch("/patchstatus/")
+def patch_status(
+    statusData: PatchStatus,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    patch_order_status(db=db, id=statusData.id, status=statusData.status)
+
+
+### MODIFY ORDER ###
+@app.patch("/patchorder/")
+def patch_status(
+    orderData: PatchOrder,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    patch_order_details(db=db, order=orderData)
+
+
+### DELETE ORDER ###
+@app.delete("/deleteorder/")
+def delete_order(
+    order: DeleteAny,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    delete_order_details(db=db, id=order.id)
+
+
+### MODIFY USER LOAD ###
+@app.get("/modifyuserload/", response_model=list[LoadUser])
+def get_modify_user_load(
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    usersList = db.query(models.User).all()
+
+    data = usersList
+    return data
+
+
+### MODIFY USER ###
+@app.patch("/patchuser/")
+def patch_user(
+    userData: PatchUser,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    patch_user_details(db=db, id=userData.id, full_name=userData.full_name)
+
+
+### DELETE USER ###
+@app.delete("/deleteuser/")
+def delete_user(
+    user: DeleteAny,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    delete_user_details(db=db, id=user.id)
+
+
+### MODIFY CHEMICAL LOAD ###
+@app.get("/modifychemicalload/", response_model=list[LoadChemical])
+def get_modify_chemical_load(
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    chemicalList = db.query(models.Chemical).all()
+
+    data = chemicalList
+    return data
+
+
+### MODIFY CHEMICAL ###
+@app.patch("/patchchemical/")
+def patch_user(
+    chemicalData: PatchChemical,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    patch_chemical_details(db=db, chemical=chemicalData)
+
+
+### DELETE CHEIMCAL ###
+@app.delete("/deletechemical/")
+def delete_chemical(
+    chemical: DeleteAny,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    delete_chemical_details(db=db, id=chemical.id)
+
+
+### MODIFY SUPPLIER LOAD ###
+@app.get("/modifysupplierload/", response_model=list[LoadSupplier])
+def get_modify_supplier_load(
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    supplierList = db.query(models.Supplier).all()
+
+    data = supplierList
+    return data
+
+
+### MODIFY SUPPLIER ###
+@app.patch("/patchsupplier/")
+def patch_supplier(
+    supplierData: PatchSupplier,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    patch_supplier_details(
+        db=db, id=supplierData.id, supplierName=supplierData.supplierName
+    )
+
+
+### DELETE SUPPLIER ###
+@app.delete("/deletesupplier/")
+def delete_supplier(
+    supplier: DeleteAny,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    delete_supplier_details(db=db, id=supplier.id)

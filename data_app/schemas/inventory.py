@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class PatchOrder(BaseModel):
+class PatchAmountLocation(BaseModel):
     id: int
     amount: int
     location_id: int | None

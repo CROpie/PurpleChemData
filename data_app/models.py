@@ -20,8 +20,10 @@ class User(Base):
     username = Column(String, unique=True)
     full_name = Column(String)
 
-    orders = relationship("Order", back_populates="user")
-    location = relationship("Location", back_populates="user")
+    orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
+    location = relationship(
+        "Location", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Location(Base):
@@ -49,7 +51,9 @@ class Chemical(Base):
     smile = Column(String, nullable=True)
     inchi = Column(String, nullable=True)
 
-    orders = relationship("Order", back_populates="chemical")
+    orders = relationship(
+        "Order", back_populates="chemical", cascade="all, delete-orphan"
+    )
 
 
 class Supplier(Base):
@@ -58,7 +62,9 @@ class Supplier(Base):
     id = Column(Integer, primary_key=True, index=True)
     supplierName = Column(String)
 
-    orders = relationship("Order", back_populates="supplier")
+    orders = relationship(
+        "Order", back_populates="supplier", cascade="all, delete-orphan"
+    )
 
 
 class Order(Base):
