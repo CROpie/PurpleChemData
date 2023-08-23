@@ -35,6 +35,7 @@ from .schemas.admin import (
 from .schemas.query import QueryOrder
 from .schemas.inventory import PatchAmountLocation, OutPatchOrder
 from .schemas.orderchemical import Chemical
+from .schemas.csv import CSVUserData, CSVChemical, CSVSupplier, CSVOrder, CSVGlobal
 
 from .functions.auth import validate_current_user, validate_current_admin
 from .functions.orderchemical import (
@@ -256,7 +257,7 @@ async def get_orders_by_query(
 
 
 ### ADD THE FIRST USER (NO ADMIN REQUIRED) ###
-@app.post("/addfirstuser/")
+@app.post("/seeddataadmin/")
 def add_first_user(
     user: NewUser,
     db: Session = Depends(get_db),
@@ -426,3 +427,60 @@ def delete_supplier(
     db: Session = Depends(get_db),
 ):
     delete_supplier_details(db=db, id=supplier.id)
+
+
+### ADD CSV FILE ###
+@app.post("/csv/")
+async def import_csv(
+    csvData: CSVGlobal,
+    current_user: Annotated[models.User, Depends(validate_current_admin)],
+    db: Session = Depends(get_db),
+):
+    userDataList = csvData.userDataList
+    chemicalList = csvData.chemicalList
+    supplierList = csvData.supplierList
+    orderList = csvData.orderList
+    for user in userDataList:
+        db_user = (
+            db.query(models.User).filter(models.User.username == user.username).first()
+        )
+        if not db_user:
+            print(user)
+            add_new_user(db=db, user=user)
+
+    for chemical in chemicalList:
+        db_chemical = (
+            db.query(models.Chemical)
+            .filter(models.Chemical.CAS == chemical.CAS)
+            .first()
+        )
+        if not db_chemical:
+            db_chemical = add_new_chemical(db=db, chemical=chemical)
+        for order in orderList:
+            if order.chemical == db_chemical.CAS:
+                order.chemical = db_chemical.id
+
+    for supplier in supplierList:
+        db_supplier = (
+            db.query(models.Supplier)
+            .filter(models.Supplier.supplierName == supplier.supplierName)
+            .first()
+        )
+        if not db_supplier:
+            db_supplier = add_new_supplier(db=db, supplier=supplier)
+        for order in orderList:
+            if order.supplier == db_supplier.supplierName:
+                order.supplier = db_supplier.id
+
+    for order in orderList:
+        db_order = models.Order(
+            user_id=order.user,
+            chemical_id=order.chemical,
+            supplier_id=order.supplier,
+            amount=order.amount,
+            status=order.status,
+            amountUnit=order.amountUnit,
+            supplierPN=order.supplierPN,
+        )
+        db.add(db_order)
+        db.commit()

@@ -16,7 +16,7 @@ def check_duplicate_user(db: Session, username: str):
 
 
 def add_new_user(db: Session, user: NewUser):
-    db_user = models.User(username=user.username, full_name=user.full_name)
+    db_user = models.User(id=user.id, username=user.username, full_name=user.full_name)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -44,7 +44,7 @@ def add_new_supplier(db: Session, supplier: NewSupplier):
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)
-    return db_supplier.id
+    return db_supplier
 
 
 ### PATCH STATUS ###
