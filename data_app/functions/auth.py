@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 import os
 
 from .. import models
-from ..schemas.auth import TokenData
+from ..schemas import TokenData
 
 from ..database import SessionLocal
 
