@@ -104,7 +104,7 @@ def get_chemicals(
 
 
 @app.get("/orderslist/", response_model=list[Order])
-def get_order(
+def get_orders(
     current_user: Annotated[models.User, Depends(validate_current_admin)],
     db: Session = Depends(get_db),
 ):
@@ -273,7 +273,7 @@ def patch_user(
 
 
 @app.patch("/chemical/")
-def patch_user(
+def patch_chemical(
     chemical: Chemical,
     current_user: Annotated[models.User, Depends(validate_current_admin)],
     db: Session = Depends(get_db),
@@ -291,7 +291,7 @@ def patch_supplier(
 
 
 @app.patch("/order/")
-def patch_status(
+def patch_order(
     order: Order,
     current_user: Annotated[models.User, Depends(validate_current_admin)],
     db: Session = Depends(get_db),
