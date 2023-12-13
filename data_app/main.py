@@ -69,8 +69,11 @@ def get_db():
         db.close()
 
 
-# Allowing access from localhost frontend
-origins = ["http://localhost:5173"]
+origins = [
+    "http://localhost:5173",
+    "https://purple-chem.vercel.app",
+    "https://purple-chem-updated.vercel.app",
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
