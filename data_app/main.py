@@ -55,6 +55,8 @@ from .schemas import (
 )
 from .csvschema import CSVGlobal
 
+from datetime import datetime
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -69,6 +71,7 @@ def get_db():
         db.close()
 
 
+# removing the trailing slash was important
 origins = [
     "http://localhost:5173",
     "https://purple-chem.vercel.app",
@@ -132,6 +135,10 @@ async def get_inventory_lists(
     current_user: Annotated[models.User, Depends(validate_current_user)],
     db: Session = Depends(get_db),
 ):
+    current_datetime = datetime.now()
+    # current_date = current_datetime.date()
+    print("Date Accessed: ", current_datetime)
+
     locationsList = get_locations_list(db=db, user_id=current_user.id)
     ordersList = get_orders_list(db=db, user_id=current_user.id)
 
